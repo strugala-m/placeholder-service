@@ -1,48 +1,91 @@
+import { createCanvas } from "canvas";
+import { colord } from "colord";
 import express from "express";
 import sharp from "sharp";
 
-const PORT = 80;
-const MIN_WIDTH = 1;
-const MIN_HEIGHT = 1;
-const MAX_WIDTH = 7680;
-const MAX_HEIGHT = 7680;
+// sharp config
+sharp.simd(true);
+sharp.concurrency(4);
 
-// Helper function
+// consts
+const MIN_WIDTH = 1;
+const MAX_WIDTH = 15360;
+const MIN_HEIGHT = MIN_WIDTH;
+const MAX_HEIGHT = MAX_WIDTH;
+const DEFAULT_BACKGROUND = "fff";
+const DEFAULT_FOREGROUND = "000";
+const DEFAULT_FONT = "Segoe UI";
+const APP_PORT = 80;
+
+const app = express();
+
+function parseColor(colorStr) {
+    let color = colord(colorStr);
+    if (!color.isValid()) {
+        color = colord("#" + colorStr);
+        if (!color.isValid()) {
+            return;
+        }
+    }
+
+    // return color;
+    const { r, g, b, a } = color.rgba;
+    return colord({
+        r: b,
+        g: g,
+        b: r,
+        a: a,
+    });
+}
+
 function clamp(val, min, max) {
     return Math.min(Math.max(val, min), max);
 }
 
-const app = express();
+app.get(/^\/(?<width>\d{1,5})(?:x(?<height>\d{1,5}))?$/, (req, res) => {
+    let { width, height } = req.params;
+    let {
+        bg: background,
+        fg: foreground,
+        t: text,
+        s: textScale,
+    } = req.query;
 
-app.get("/favicon.ico", (req, res) => {
-    res.status(404).end();
-});
-
-app.get("/:size", async (req, res) => {
-    const { size } = req.params;
-    
-    // Parsing provided values
-    let [width, height] = size.split("x", 2).map(s => Number(s.trim()));
-    if (!width) {
-        res.status(400).end("Failed to parse placeholder parameters; Please provide the parameters in [width]x[height?] format");
-    }
-
-    // Clamping width and height
     width = clamp(width, MIN_WIDTH, MAX_WIDTH);
     height ||= width;
     height = clamp(height, MIN_HEIGHT, MAX_HEIGHT);
 
-    // Generating placeholder image
-    const inBuffer = Buffer.from([0xa6, 0xa6, 0xa6]);
-    const params = { raw: { width: 1, height: 1, channels: 3 } };
+    const backgroundColor = parseColor(background) || parseColor(DEFAULT_BACKGROUND);
+    const foregroundColor = parseColor(foreground) || parseColor(DEFAULT_FOREGROUND);
+    text ||= `${width}x${height}`;
+    textScale ||= 1;
 
-    const outBuffer = await sharp(inBuffer, params)
-        .resize({ width, height })
+    const canvas = createCanvas(width, height);
+    const context = canvas.getContext("2d", { alpha: false });
+
+    context.fillStyle = backgroundColor.toHex();
+    context.fillRect(0, 0, width, height);
+
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+
+    const fontSize = .15 * height * textScale;
+    context.font = `${fontSize}px 'Comic Sans MS'`;
+
+    context.fillStyle = foregroundColor.toHex();
+    context.fillText(text, width * .5, height * .5);
+
+    const rawBuf = canvas.toBuffer("raw");
+    sharp(rawBuf, { raw: { width, height, channels: 4 } })
+        .removeAlpha()
         .png()
-        .toBuffer();
+        .toBuffer()
+        .then(pngBuf => {
+            res.setHeader("Content-Type", "image/png");
+            res.send(pngBuf);
+        });
+});
 
-    // Server response
-    res.setHeader("Content-Type", "image/png").send(outBuffer);
-})
-
-app.listen(PORT);
+app.listen(APP_PORT, () => {
+    console.log(`Server listening on http://127.0.0.1:${APP_PORT}/`);
+});
