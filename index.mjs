@@ -28,7 +28,7 @@ function parseColor(colorStr) {
         }
     }
 
-    // return color;
+    // Return color in BGRA, because the "canvas" module uses BGRA internally as opposed to regular RGBA, which "sharp" uses.
     const { r, g, b, a } = color.rgba;
     return colord({
         r: b,
@@ -70,11 +70,14 @@ app.get(/^\/(?<width>\d{1,5})(?:x(?<height>\d{1,5}))?$/, (req, res) => {
     context.textBaseline = "middle";
 
     const fontSize = .15 * height * textScale;
-    context.font = `${fontSize}px 'Comic Sans MS'`;
+    context.font = `${fontSize}px ${DEFAULT_FONT}`;
 
     context.fillStyle = foregroundColor.toHex();
     context.fillText(text, width * .5, height * .5);
 
+    /* 
+    "channels" is set to 4 because Cairo ("canvas") stores the values internally in float32, so "rawBuf" size is always multiple of four, no matter if alpha is used or not.
+    */ 
     const rawBuf = canvas.toBuffer("raw");
     sharp(rawBuf, { raw: { width, height, channels: 4 } })
         .removeAlpha()
