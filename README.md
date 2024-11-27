@@ -4,13 +4,14 @@ Placeholder Service is a service used for ***fast*** placeholder image generatio
 
 ## Usage
 
-Head to
-``http://127.0.0.1/[width]x[height]`` in order to generate a basic placeholder.  
+Run the server with ``node .\index.mjs``, then head to ``http://127.0.0.1/[width]x[height]`` in order to generate a basic placeholder.
   
 ### Parameters
 
-- ``bg`` - Sets the background color, accepts any valid CSS-style colors
-- ``fg`` - Sets the text color, accepts any valid CSS-style colors
+- ``bg`` - Sets the background color, 
+    - accepts any valid CSS-style colors,
+- ``fg`` - Sets the text color,
+    - accepts any valid CSS-style colors,
 - ``t`` - Sets the text
     - Default is `[width]x[height]`
 - ``s`` - Sets the text scale,
@@ -34,4 +35,8 @@ You can combine all and any parameters in whatever ways you please.
     - Will generate a 3840 x 3840 placeholder with a big "Hello" written on it, with background color set to ``#663399`` and text colored ``#ffff00``,
 
 ### Limits
-Width and height are currently capped to about 15k px. You can configure those limits by changing a few constants at the top of the ``index.mjs`` file.   
+You can configure the limits by changing a few constants at the top of the ``index.mjs`` file.
+- Max width is 15360 (px),
+- Max height is equal to max width,
+- Min width is 1 (px),
+- Min height is equal to min height,
